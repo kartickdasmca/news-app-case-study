@@ -46,15 +46,16 @@ const Dropdown: React.FC<DropdownProps> = React.memo(
 
         {isOpen && (
           <div className="absolute left-0 mt-2 w-48 bg-white border rounded shadow-lg">
-            {options.map((option) => (
-              <div
-                key={option.value}
-                className="px-4 py-2 hover:bg-gray-200 cursor-pointer"
-                onClick={() => handleSelect(option.value)}
-              >
-                {option.label}
-              </div>
-            ))}
+            {options &&
+              options?.map((option) => (
+                <div
+                  key={option.value}
+                  className="px-4 py-2 hover:bg-gray-200 cursor-pointer"
+                  onClick={() => handleSelect(option.value)}
+                >
+                  {option.label}
+                </div>
+              ))}
           </div>
         )}
       </div>

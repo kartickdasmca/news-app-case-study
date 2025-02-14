@@ -7,15 +7,17 @@ import Date from "./date";
 import useMediaQuery from "../../hooks/useMediaQuery";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../../redux/app/store";
-import { categories, sources } from "../../utils/data";
+import { sources, categoryMapping } from "../../utils/data";
 import MenuDropdown from "../../shared_components/MenuDropdown";
 import { setSearchFilters } from "../../redux/features/articleSlice";
 import useSearchDebounce from "../../hooks/useSearchDebounce";
 import { preferences } from "../../utils/function";
+import { Source } from "../../types";
+
 const Navbar = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [selectedSource, setSelectedSource] = useState<string>(
-    preferences()?.source ? "" : "NewYorkTimes"
+    preferences()?.source ? "" : Source.NewYorkTimes
   );
   const [selectedDate, setSelectedDate] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState<string>("");
@@ -34,23 +36,24 @@ const Navbar = () => {
     setIsOpenModal(true);
     setIsMenuToggled(!isMenuToggled);
   };
-  // Memoized options array for dropdown (only changes if values change)
-  const categoryOptions = useMemo(() => categories, []);
-  const sourceOptions = useMemo(() => sources, []);
+  //Fetching correct category value based on source
+  const categories = categoryMapping[selectedSource];
 
   // Memoized handlers for dropdown (do not recreate on re-render)
   const handleCategoryChange = useCallback((value: string) => {
     setSelectedCategory(value);
   }, []);
+
   const handleSourceChange = useCallback((value: string) => {
     setSelectedSource(value);
+    setSelectedCategory("");
   }, []);
-  //const isFirstRender = useRef<boolean>(true);
+
+  // Memoized options array for dropdown (only changes if values change)
+  const categoryOptions = useMemo(() => categories, [selectedSource]);
+  const sourceOptions = useMemo(() => sources, []);
+
   useEffect(() => {
-    // if (isFirstRender.current) {
-    //   isFirstRender.current = false;
-    //   return;
-    // }
     dispatch(
       setSearchFilters({
         filterCategory: selectedCategory,

@@ -16,11 +16,12 @@ const Dropdown: React.FC<DropdownProps> = React.memo(
           onChange={(e) => onChange(e.target.value)}
         >
           <option value="">Select an option</option>
-          {options.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
+          {options &&
+            options?.map((option) => (
+              <option key={option?.value} value={option?.value}>
+                {option?.label}
+              </option>
+            ))}
         </select>
       </div>
     );

@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import FormDropdown from "../../shared_components/FormDropdown";
-import { categories, sources } from "../../utils/data";
+import { sources, categoryMapping } from "../../utils/data";
 //import useSearchDebounce from "../../hooks/useSearchDebounce";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "../../redux/app/store";
@@ -24,9 +24,11 @@ const PreferenceModal = ({ setIsOpenModal }: props) => {
   const [error, setError] = useState<string>();
 
   const dispatch = useDispatch<AppDispatch>();
+  //Fetching correct category value based on source
+  const categories = categoryMapping[source];
 
   // Memoized options array for dropdown (only changes if values change)
-  const categoryOptions = useMemo(() => categories, []);
+  const categoryOptions = useMemo(() => categories, [source]);
   const sourceOptions = useMemo(() => sources, []);
 
   // Memoized handlers for dropdown (do not recreate on re-render)
@@ -35,6 +37,7 @@ const PreferenceModal = ({ setIsOpenModal }: props) => {
   }, []);
   const handleSourceChange = useCallback((value: string) => {
     setSource(value);
+    setCategory("");
   }, []);
 
   //const debouncedSearch = useSearchDebounce(author, 500);

@@ -2,6 +2,12 @@ import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import axios from "axios";
 import { RootState } from "../app/store";
 import defaultimage from "../../assets/default.avif";
+import {
+  AUTHOR_PARAM_MAP,
+  DATE_PARAM_MAP,
+  CATEGORY_PARAM_MAP,
+  API_CONFIG,
+} from "../lookup_table";
 
 import { NormalizedArticle, Article, Source } from "../../types";
 
@@ -41,28 +47,6 @@ export const fetchArticles = createAsyncThunk(
         ? encodeURIComponent(searchTerm.trim())
         : "";
 
-      // Setting source/API endpoint based on user's filter, preference & default
-      const API_CONFIG: Record<
-        string,
-        { BASE_URL: string; API_KEY: string; apiKeyParam: string }
-      > = {
-        NewYorkTimes: {
-          BASE_URL: import.meta.env.VITE_API_NYT,
-          API_KEY: import.meta.env.VITE_NYT_APIKEY,
-          apiKeyParam: "api-key",
-        },
-        TheGuardian: {
-          BASE_URL: import.meta.env.VITE_API_GUARDIAN,
-          API_KEY: import.meta.env.VITE_GUARDIAN_APIKEY,
-          apiKeyParam: "api-key",
-        },
-        "NewsAPI.org": {
-          BASE_URL: import.meta.env.VITE_API_NEWSAPIORG,
-          API_KEY: import.meta.env.VITE_NEWSAPIORG_APIKEY,
-          apiKeyParam: "apiKey", // NewsAPI.org uses "apiKey"
-        },
-      };
-
       const selectedSource = filterSource || source || Source.NewYorkTimes; // Priority: filterSource > source > default
 
       const apiConfig =
@@ -75,46 +59,37 @@ export const fetchArticles = createAsyncThunk(
         params["show-tags"] = "contributor";
         params["show-fields"] = "thumbnail,trailText";
       }
-      //Filters condition
+
+      // Search Filters
       if (searchTerm || filterCategory || filterDate || filterSource) {
         // If search filters exist, override preferences
-        if (searchTerm) params.q = formattedSearchTerm; //q param same for all 3 api
+        if (searchTerm) params.q = formattedSearchTerm; // 'q' param is the same for all sources
 
-        if (filterCategory) {
-          if (filterSource == Source.NewYorkTimes)
-            // (future scope) here we could use mapping approach instead of multiple if else for better maintanability & avoiding Redundant Condition Checks
-            params.fq = `section_name:("${filterCategory}")`;
-          if (filterSource == Source.TheGuardian)
-            params.section = filterCategory;
+        if (filterCategory && CATEGORY_PARAM_MAP[filterSource]) {
+          Object.assign(
+            params,
+            CATEGORY_PARAM_MAP[filterSource](filterCategory)
+          );
         }
-        if (filterDate) {
-          if (filterSource == Source.NewYorkTimes)
-            params.begin_date = filterDate.replace(/-/g, "");
-          if (filterSource == Source.TheGuardian)
-            params["from-date"] = filterDate;
+
+        if (filterDate && DATE_PARAM_MAP[filterSource]) {
+          Object.assign(params, DATE_PARAM_MAP[filterSource](filterDate));
         }
-      } else if (category || author || source) {
+      }
+      // Preference Filters (category, author, source)
+      else if (category || author || source) {
         // If no search filters but preferences exist, use preferences
-        if (source == Source.NewYorkTimes) {
-          params.fq = [
-            author ? `byline:("${encodeURIComponent(author)}")` : "",
-            category ? `section_name:("${category}")` : "",
-          ]
-            .filter(Boolean)
-            .join(" AND "); // Combine filters
-        } else if (source == Source.TheGuardian) {
-          if (author) {
-            params["tag"] = `profile/${author
-              .replace(/\s+/g, "-")
-              .toLowerCase()}`;
-          }
-          if (category) params.section = category;
+        if (source && category && CATEGORY_PARAM_MAP[source]) {
+          Object.assign(params, CATEGORY_PARAM_MAP[source](category));
+        }
+
+        if (source && author && AUTHOR_PARAM_MAP[source]) {
+          Object.assign(params, AUTHOR_PARAM_MAP[source](author));
         }
       } else {
-        // Default : Fetch trending news
+        // Default: Fetch trending news
         params.q = "latest";
       }
-
       console.log(params);
       console.log("BASE_URL", BASE_URL);
       //API calling
