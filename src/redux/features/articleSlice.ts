@@ -1,15 +1,15 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import axios from "axios";
 import { RootState } from "../app/store";
-import defaultimage from "../../assets/default.avif";
 import {
   AUTHOR_PARAM_MAP,
   DATE_PARAM_MAP,
   CATEGORY_PARAM_MAP,
   API_CONFIG,
+  API_SOURCE_PARSERS,
 } from "../lookup_table";
 
-import { NormalizedArticle, Article, Source } from "../../types";
+import { NormalizedArticle, Source } from "../../types";
 
 // Define state type
 interface ArticleState {
@@ -59,7 +59,8 @@ export const fetchArticles = createAsyncThunk(
         params["show-tags"] = "contributor";
         params["show-fields"] = "thumbnail,trailText";
       }
-
+      // Default: Fetch trending news
+      params.q = "latest";
       // Search Filters
       if (searchTerm || filterCategory || filterDate || filterSource) {
         // If search filters exist, override preferences
@@ -86,51 +87,18 @@ export const fetchArticles = createAsyncThunk(
         if (source && author && AUTHOR_PARAM_MAP[source]) {
           Object.assign(params, AUTHOR_PARAM_MAP[source](author));
         }
-      } else {
-        // Default: Fetch trending news
-        params.q = "latest";
       }
+
       console.log(params);
       console.log("BASE_URL", BASE_URL);
       //API calling
       const response = await axios.get(BASE_URL, { params });
+      // Identify the API source dynamically
+      const sourceKey = Object.keys(API_SOURCE_PARSERS).find((key) =>
+        BASE_URL.includes(key)
+      );
 
-      // Identify the API source and normalize the response
-      if (BASE_URL.includes("nytimes.com")) {
-        return (
-          response.data.response?.docs?.map((article: any) => ({
-            title: article.headline?.main || "No Title",
-            description: article?.abstract || "No Description",
-            image: article.multimedia?.[0]?.url
-              ? `https://www.nytimes.com/${article.multimedia[0].url}`
-              : defaultimage,
-            date: article?.pub_date || "",
-            author: article.byline?.original || "Unknown",
-            web_url: article?.web_url || "http://localhost:5173/",
-            source: article?.source || "New York Times ",
-          })) || []
-        );
-      }
-
-      if (BASE_URL.includes("guardianapis.com")) {
-        return (
-          response.data.response?.results?.map((article: any) => ({
-            title: article.webTitle || "No Title",
-            description: article.fields?.trailText || "No Description",
-            image: article.fields?.thumbnail || defaultimage,
-            date: article.webPublicationDate || "",
-            author: article.tags?.[0]?.webTitle || "Unknown",
-            web_url: article?.webUrl || "http://localhost:5173/",
-            source: "The Guardian",
-          })) || []
-        );
-      }
-      if (BASE_URL.includes("newsapi.org")) {
-        //need to implement
-        return [];
-      }
-      return [];
-      //return response.data;
+      return sourceKey ? API_SOURCE_PARSERS[sourceKey](response.data) : [];
     } catch (error: any) {
       console.error("Error fetching", error);
       return rejectWithValue(error);
